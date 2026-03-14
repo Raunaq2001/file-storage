@@ -178,28 +178,49 @@ async function exchangeCodeForToken(code, state, verifier) {
 }
 
 async function handleOAuthCallback() {
+    console.log('=== OAuth Callback Handler ===');
+    console.log('Current URL:', window.location.href);
+    console.log('Search params:', window.location.search);
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
+    const redirectUri = getConfig(CONFIG.STORAGE_KEYS.REDIRECT_URI);
+
+    console.log('Expected redirect URI:', redirectUri);
+    console.log('Code present:', !!code);
+    console.log('State present:', !!state);
+    console.log('Error present:', !!error);
 
     // Clean up URL
     window.history.replaceState({}, document.title, window.location.pathname);
 
     if (error) {
+        console.error('OAuth error:', error, errorDescription);
         showStatus(`Authentication failed: ${errorDescription || error}`, 'error');
         return false;
     }
 
     if (!code) {
+        console.warn('No code in URL - might be direct access or callback URL mismatch');
+        // Check if we're on the callback URL
+        if (window.location.pathname.endsWith('?callback') ||
+            window.location.search.includes('callback')) {
+            console.warn('On callback URL but no code - GitHub may not have redirected properly');
+        }
         return false;
     }
 
     const storedState = getConfig(CONFIG.STORAGE_KEYS.STATE);
     const verifier = getConfig(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
 
+    console.log('State comparison:', { received: state, stored: storedState, match: state === storedState });
+    console.log('Verifier present:', !!verifier);
+
     if (state !== storedState || !verifier) {
+        console.error('State mismatch or missing verifier');
         showStatus('Invalid OAuth state. Please try again.', 'error');
         return false;
     }
@@ -207,6 +228,7 @@ async function handleOAuthCallback() {
     try {
         showStatus('Completing authentication...', 'info');
         const tokenData = await exchangeCodeForToken(code, state, verifier);
+        console.log('Token exchange successful');
         setConfig(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
 
         // Clear sensitive data
@@ -217,6 +239,7 @@ async function handleOAuthCallback() {
         await loadUserInfo();
         return true;
     } catch (err) {
+        console.error('Token exchange failed:', err);
         showStatus(`Authentication error: ${err.message}`, 'error');
         return false;
     }

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(npm:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "WebFetch(domain:raunaq2001.github.io)"
     ]
   }
 }
