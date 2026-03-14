@@ -146,10 +146,10 @@ function clearAuthData() {
 async function initiateOAuth() {
     console.log('=== initiateOAuth called ===');
 
-    const clientId = CONFIG.STORAGE_KEYS.CLIENT_ID;
-    const redirectUri = CONFIG.STORAGE_KEYS.REDIRECT_URI;
+    const clientId = getConfig(CONFIG.STORAGE_KEYS.CLIENT_ID);
+    const redirectUri = getConfig(CONFIG.STORAGE_KEYS.REDIRECT_URI);
 
-    console.log('Using hardcoded config:', { clientId, redirectUri });
+    console.log('Retrieved config:', { clientId, redirectUri });
 
     if (!clientId || !redirectUri) {
         showStatus('Please configure GitHub OAuth App credentials first. See README.md', 'error');
@@ -157,26 +157,23 @@ async function initiateOAuth() {
         return;
     }
 
-    const codeVerifier = generateRandomString(64);
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateRandomString(32);
-
-    setConfig(CONFIG.STORAGE_KEYS.PKCE_VERIFIER, codeVerifier);
     setConfig(CONFIG.STORAGE_KEYS.STATE, state);
 
+    // Use implicit flow - token returned in URL fragment (no CORS)
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         scope: CONFIG.AUTH_SCOPES,
         state: state,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256'
+        response_type: 'token' // Implicit flow returns token directly
     });
 
-    const finalUrl = `${CONFIG.OAUTH_URL}?${params.toString()}`;
-    console.log('Redirecting to:', finalUrl);
-
     sessionStorage.setItem('oauth_pending', 'true');
+
+    const finalUrl = `${CONFIG.OAUTH_URL}?${params.toString()}`;
+    console.log('Redirecting to (implicit flow):', finalUrl);
+
     window.location.href = finalUrl;
 }
 
@@ -208,18 +205,16 @@ async function exchangeCodeForToken(code, state, verifier) {
 }
 
 async function handleOAuthCallback() {
-    console.log('=== OAuth Callback Handler ===');
+    console.log('=== OAuth Callback Handler (Implicit Flow) ===');
     console.log('Current URL:', window.location.href);
-    console.log('Search params:', window.location.search);
 
+    // In implicit flow, token is in URL hash fragment, not query params
+    // URL format: https://callback?callback#access_token=...&token_type=...&scope=...
+
+    // Check for errors first (GitHub uses query params for errors)
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
-
-    // Clean up URL
-    window.history.replaceState({}, document.title, window.location.pathname);
 
     if (error) {
         console.error('OAuth error:', error, errorDescription);
@@ -227,41 +222,55 @@ async function handleOAuthCallback() {
         return false;
     }
 
-    if (!code) {
-        console.warn('No code in URL - might be direct access or callback URL mismatch');
+    // Extract token from hash fragment
+    const hash = window.location.hash;
+    console.log('URL hash fragment:', hash);
+
+    if (!hash || !hash.includes('access_token')) {
+        console.warn('No access token in URL fragment');
+        showStatus('No access token received. Please try again.', 'error');
         return false;
     }
 
+    // Parse hash parameters
+    const hashParams = new URLSearchParams(hash.substring(1)); // Remove '#'
+    const accessToken = hashParams.get('access_token');
+    const tokenType = hashParams.get('token_type');
+    const scope = hashParams.get('scope');
+
+    console.log('Token received:', { accessToken: accessToken ? '***' + accessToken.slice(-4) : 'none', tokenType, scope });
+
+    if (!accessToken) {
+        showStatus('No access token received. Please try again.', 'error');
+        return false;
+    }
+
+    // Validate state
+    const state = urlParams.get('state');
     const storedState = localStorage.getItem(CONFIG.STORAGE_KEYS.STATE);
-    const verifier = localStorage.getItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
 
-    console.log('State comparison:', { received: state, stored: storedState, match: state === storedState });
-    console.log('Verifier present:', !!verifier);
+    console.log('State validation:', { received: state, stored: storedState, match: state === storedState });
 
-    if (state !== storedState || !verifier) {
-        console.error('State mismatch or missing verifier');
+    if (state !== storedState) {
+        console.error('State mismatch');
         showStatus('Invalid OAuth state. Please try again.', 'error');
         return false;
     }
 
-    try {
-        showStatus('Completing authentication...', 'info');
-        const tokenData = await exchangeCodeForToken(code, state, verifier);
-        console.log('Token exchange successful');
-        localStorage.setItem(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
+    // Save token
+    localStorage.setItem(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, accessToken);
 
-        // Clear sensitive data
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
-        localStorage.removeItem(CONFIG.STORAGE_KEYS.STATE);
+    // Clear state
+    localStorage.removeItem(CONFIG.STORAGE_KEYS.STATE);
 
-        showStatus('Authentication successful!', 'success');
-        await loadUserInfo();
-        return true;
-    } catch (err) {
-        console.error('Token exchange failed:', err);
-        showStatus(`Authentication error: ${err.message}`, 'error');
-        return false;
-    }
+    console.log('Token saved, loading user info...');
+    showStatus('Authentication successful!', 'success');
+
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+
+    await loadUserInfo();
+    return true;
 }
 
 function logout() {
