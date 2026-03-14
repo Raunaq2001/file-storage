@@ -125,7 +125,9 @@ function getConfig(storageKey, defaultValue = null) {
 }
 
 function setConfig(storageKey, value) {
-    localStorage.setItem(storageKey, JSON.stringify(value));
+    // Only stringify if it's an object, otherwise store as-is (strings are already strings)
+    const valueToStore = typeof value === 'object' ? JSON.stringify(value) : value;
+    localStorage.setItem(storageKey, valueToStore);
 }
 
 function clearAuthData() {
