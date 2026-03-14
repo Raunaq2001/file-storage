@@ -1,11 +1,11 @@
-# Setup Instructions for GitHub File Storage
+# Setup Instructions for Raunaq_Cloud
 
 ## Step 1: Create GitHub OAuth App
 
 1. Go to [GitHub Settings > Developer settings > OAuth Apps](https://github.com/settings/developers)
 2. Click **New OAuth App**
 3. Fill in:
-   - **Application name**: GitHub File Storage
+   - **Application name**: Raunaq_Cloud
    - **Homepage URL**: `https://yourusername.github.io/file-storage`
    - **Authorization callback URL**: `https://yourusername.github.io/file-storage?callback`
 4. Click **Register application**

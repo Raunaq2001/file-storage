@@ -1,8 +1,8 @@
 @echo off
-REM GitHub File Storage Deploy Helper for Windows
+REM Raunaq_Cloud Deploy Helper for Windows
 REM Handles git conflicts and deploys to GitHub Pages
 
-echo === GitHub File Storage Deploy Helper ===
+echo === Raunaq_Cloud Deploy Helper ===
 echo Checking git status...
 
 REM Check if we're in a git repository
@@ -66,7 +66,7 @@ if errorlevel 0 (
     echo.
     echo Deployment successful!
     echo.
-    echo Your GitHub File Storage app is now live!
+    echo Your Raunaq_Cloud app is now live!
     echo Visit: https://YOUR-USERNAME.github.io/YOUR-REPO-NAME
     echo.
     echo Next steps:

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# GitHub File Storage Deploy Helper
+# Raunaq_Cloud Deploy Helper
 # Handles git conflicts and deploys to GitHub Pages
 
-echo "=== GitHub File Storage Deploy Helper ==="
+echo "=== Raunaq_Cloud Deploy Helper ==="
 echo "Checking git status..."
 
 # Check if we're in a git repository
@@ -57,7 +57,7 @@ if git push -u origin main --force-with-lease; then
     echo ""
     echo "✅ Deployment successful!"
     echo ""
-    echo "Your GitHub File Storage app is now live!"
+    echo "Your Raunaq_Cloud app is now live!"
     echo "Visit: https://YOUR-USERNAME.github.io/YOUR-REPO-NAME"
     echo ""
     echo "Next steps:"

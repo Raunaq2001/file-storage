@@ -1,4 +1,4 @@
-# GitHub File Storage Application
+# Raunaq_Cloud Application
 
 A responsive web application for uploading and downloading files, storing them securely in a private GitHub repository and serving via GitHub Pages.
 
@@ -19,7 +19,7 @@ A responsive web application for uploading and downloading files, storing them s
 1. Go to [GitHub Settings > Developer settings > OAuth Apps](https://github.com/settings/developers)
 2. Click **New OAuth App**
 3. Fill in:
-   - **Application name**: GitHub File Storage
+   - **Application name**: Raunaq_Cloud
    - **Homepage URL**: `https://yourusername.github.io/file-storage`
    - **Authorization callback URL**: `https://yourusername.github.io/file-storage?callback`
 4. Click **Register application**

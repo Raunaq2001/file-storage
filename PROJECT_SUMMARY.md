@@ -1,4 +1,4 @@
-# Project Summary: GitHub File Storage Application
+# Project Summary: Raunaq_Cloud Application
 
 ## 🎯 Project Complete
 
