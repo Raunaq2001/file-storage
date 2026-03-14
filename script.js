@@ -96,7 +96,22 @@ function debounce(func, wait) {
 }
 
 // ===== Storage Functions =====
+// ===== Critical OAuth Fix =====
+// Remove localStorage dependency - use hardcoded values directly
 function getConfig(key, defaultValue = null) {
+    console.log('=== getConfig called for:', key, '===');
+    console.log('Hardcoded value from CONFIG:', CONFIG.STORAGE_KEYS[key]);
+
+    // For OAuth critical values, always use the hardcoded values
+    if (key === CONFIG.STORAGE_KEYS.CLIENT_ID ||
+        key === CONFIG.STORAGE_KEYS.REDIRECT_URI ||
+        key === CONFIG.STORAGE_KEYS.REPO_OWNER ||
+        key === CONFIG.STORAGE_KEYS.REPO_NAME) {
+        console.log('Using hardcoded value from CONFIG:', CONFIG.STORAGE_KEYS[key]);
+        return CONFIG.STORAGE_KEYS[key];
+    }
+
+    // For other values, try localStorage
     const stored = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
     if (stored) {
         try {
@@ -105,14 +120,12 @@ function getConfig(key, defaultValue = null) {
             return stored; // Return raw string if not JSON
         }
     }
-    // Fallback to CONFIG.STORAGE_KEYS values if available
-    if (CONFIG.STORAGE_KEYS[key] && defaultValue === null) {
-        return CONFIG.STORAGE_KEYS[key];
-    }
     return defaultValue;
 }
 
 function setConfig(key, value) {
+    console.log('=== setConfig called for:', key, '===');
+    console.log('Value being stored:', value);
     localStorage.setItem(CONFIG.STORAGE_KEYS[key], JSON.stringify(value));
 }
 
