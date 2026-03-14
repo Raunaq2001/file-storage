@@ -90,13 +90,29 @@
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
     <script>
         // Debug: Log configuration on load
-        console.log('GitHub File Storage App loaded');
+        console.log('Raunaq_Cloud App loaded');
         console.log('Expected redirect URI:', 'https://Raunaq2001.github.io/file-storage?callback');
         console.log('Current URL:', window.location.href);
         console.log('Search params:', window.location.search);
+
+        // Clear any old corrupted localStorage data on load
+        (function cleanupOldData() {
+            try {
+                const testKey = 'oauth_state';
+                const oldState = localStorage.getItem(testKey);
+                if (oldState && (oldState.startsWith('"') || oldState.endsWith('"'))) {
+                    console.log('Cleaning up old corrupted localStorage data');
+                    localStorage.removeItem(testKey);
+                    localStorage.removeItem('pkce_verifier');
+                    localStorage.removeItem('github_app_token');
+                }
+            } catch (e) {
+                console.error('LocalStorage cleanup error:', e);
+            }
+        })();
     </script>
 </body>
 </html>
