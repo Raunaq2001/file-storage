@@ -145,19 +145,10 @@ function clearAuthData() {
 async function initiateOAuth() {
     console.log('=== initiateOAuth called ===');
 
-    // Debug: Check what's in localStorage
-    console.log('localStorage contents:');
-    Object.keys(CONFIG.STORAGE_KEYS).forEach(key => {
-        const val = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
-        console.log(`  ${key}: ${val ? (val.length > 50 ? val.substring(0, 50) + '...' : val) : '(empty)'}`);
-    });
+    const clientId = CONFIG.STORAGE_KEYS.CLIENT_ID;
+    const redirectUri = CONFIG.STORAGE_KEYS.REDIRECT_URI;
 
-    const clientId = getConfig(CONFIG.STORAGE_KEYS.CLIENT_ID);
-    const redirectUri = getConfig(CONFIG.STORAGE_KEYS.REDIRECT_URI);
-
-    console.log('Retrieved config:', { clientId, redirectUri });
-    console.log('CLIENT_ID from CONFIG:', CONFIG.STORAGE_KEYS.CLIENT_ID);
-    console.log('REDIRECT_URI from CONFIG:', CONFIG.STORAGE_KEYS.REDIRECT_URI);
+    console.log('Using hardcoded config:', { clientId, redirectUri });
 
     if (!clientId || !redirectUri) {
         showStatus('Please configure GitHub OAuth App credentials first. See README.md', 'error');
@@ -172,8 +163,6 @@ async function initiateOAuth() {
     setConfig(CONFIG.STORAGE_KEYS.PKCE_VERIFIER, codeVerifier);
     setConfig(CONFIG.STORAGE_KEYS.STATE, state);
 
-    console.log('Generated PKCE:', { codeVerifier, state, codeChallenge });
-
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
@@ -183,16 +172,10 @@ async function initiateOAuth() {
         code_challenge_method: 'S256'
     });
 
-    console.log('OAuth URL being constructed:');
-    console.log('Base:', CONFIG.OAUTH_URL);
-    console.log('Params:', Object.fromEntries(params));
-
-    // Store current URL to check when returning from OAuth
-    sessionStorage.setItem('oauth_pending', 'true');
-
     const finalUrl = `${CONFIG.OAUTH_URL}?${params.toString()}`;
-    console.log('Final URL:', finalUrl);
+    console.log('Redirecting to:', finalUrl);
 
+    sessionStorage.setItem('oauth_pending', 'true');
     window.location.href = finalUrl;
 }
 
@@ -233,12 +216,6 @@ async function handleOAuthCallback() {
     const state = urlParams.get('state');
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
-    const redirectUri = getConfig(CONFIG.STORAGE_KEYS.REDIRECT_URI);
-
-    console.log('Expected redirect URI:', redirectUri);
-    console.log('Code present:', !!code);
-    console.log('State present:', !!state);
-    console.log('Error present:', !!error);
 
     // Clean up URL
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -251,16 +228,11 @@ async function handleOAuthCallback() {
 
     if (!code) {
         console.warn('No code in URL - might be direct access or callback URL mismatch');
-        // Check if we're on the callback URL
-        if (window.location.pathname.endsWith('?callback') ||
-            window.location.search.includes('callback')) {
-            console.warn('On callback URL but no code - GitHub may not have redirected properly');
-        }
         return false;
     }
 
-    const storedState = getConfig(CONFIG.STORAGE_KEYS.STATE);
-    const verifier = getConfig(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
+    const storedState = localStorage.getItem(CONFIG.STORAGE_KEYS.STATE);
+    const verifier = localStorage.getItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
 
     console.log('State comparison:', { received: state, stored: storedState, match: state === storedState });
     console.log('Verifier present:', !!verifier);
@@ -275,7 +247,7 @@ async function handleOAuthCallback() {
         showStatus('Completing authentication...', 'info');
         const tokenData = await exchangeCodeForToken(code, state, verifier);
         console.log('Token exchange successful');
-        setConfig(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
+        localStorage.setItem(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, tokenData.access_token);
 
         // Clear sensitive data
         localStorage.removeItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
