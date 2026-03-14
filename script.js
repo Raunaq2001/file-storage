@@ -95,24 +95,10 @@ function debounce(func, wait) {
     };
 }
 
-// ===== Storage Functions =====
-// ===== Critical OAuth Fix =====
-// Remove localStorage dependency - use hardcoded values directly
-function getConfig(key, defaultValue = null) {
-    console.log('=== getConfig called for:', key, '===');
-    console.log('Hardcoded value from CONFIG:', CONFIG.STORAGE_KEYS[key]);
-
-    // For OAuth critical values, always use the hardcoded values
-    if (key === CONFIG.STORAGE_KEYS.CLIENT_ID ||
-        key === CONFIG.STORAGE_KEYS.REDIRECT_URI ||
-        key === CONFIG.STORAGE_KEYS.REPO_OWNER ||
-        key === CONFIG.STORAGE_KEYS.REPO_NAME) {
-        console.log('Using hardcoded value from CONFIG:', CONFIG.STORAGE_KEYS[key]);
-        return CONFIG.STORAGE_KEYS[key];
-    }
-
-    // For other values, try localStorage
-    const stored = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
+// Get configuration value - accepts storage key name directly
+function getConfig(storageKey, defaultValue = null) {
+    // Try localStorage first
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
         try {
             return JSON.parse(stored);
@@ -120,13 +106,26 @@ function getConfig(key, defaultValue = null) {
             return stored; // Return raw string if not JSON
         }
     }
+
+    // Fallback to hardcoded CONFIG values for critical OAuth settings
+    if (storageKey === CONFIG.STORAGE_KEYS.CLIENT_ID) {
+        return CONFIG.STORAGE_KEYS.CLIENT_ID;
+    }
+    if (storageKey === CONFIG.STORAGE_KEYS.REDIRECT_URI) {
+        return CONFIG.STORAGE_KEYS.REDIRECT_URI;
+    }
+    if (storageKey === CONFIG.STORAGE_KEYS.REPO_OWNER) {
+        return CONFIG.STORAGE_KEYS.REPO_OWNER;
+    }
+    if (storageKey === CONFIG.STORAGE_KEYS.REPO_NAME) {
+        return CONFIG.STORAGE_KEYS.REPO_NAME;
+    }
+
     return defaultValue;
 }
 
-function setConfig(key, value) {
-    console.log('=== setConfig called for:', key, '===');
-    console.log('Value being stored:', value);
-    localStorage.setItem(CONFIG.STORAGE_KEYS[key], JSON.stringify(value));
+function setConfig(storageKey, value) {
+    localStorage.setItem(storageKey, JSON.stringify(value));
 }
 
 function clearAuthData() {
