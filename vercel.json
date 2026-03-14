@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "styles.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "app.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "manifest.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "sw.js",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "GITHUB_CLIENT_ID": "@github_client_id",
+    "GITHUB_CLIENT_SECRET": "@github_client_secret"
+  }
+}

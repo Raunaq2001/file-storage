@@ -2,7 +2,11 @@
 const CONFIG = {
     GITHUB_API: 'https://api.github.com',
     OAUTH_URL: 'https://github.com/login/oauth/authorize',
-    TOKEN_URL: 'https://github.com/login/oauth/access_token',
+    // Serverless API endpoint for token exchange (set to empty for same-origin)
+    // Examples:
+    // - '' (empty) = same origin (when deployed together on Vercel)
+    // - 'https://your-api.vercel.app' = separate Vercel deployment
+    API_BASE_URL: '',
     AUTH_SCOPES: 'repo',
     // File limits (in bytes) - 100MB is GitHub's max file size
     MAX_FILE_SIZE: 100 * 1024 * 1024,
@@ -14,6 +18,9 @@ const CONFIG = {
         ACCESS_TOKEN: 'github_app_token',
         REFRESH_TOKEN: 'github_app_refresh',
         CLIENT_ID: 'Ov23lirVtsDOnCAq92mA',
+        // IMPORTANT: Update this to your deployed URL!
+        // If using Vercel: 'https://your-project.vercel.app/?callback'
+        // If using GitHub Pages: 'https://raunaq2001.github.io/file-storage?callback'
         REDIRECT_URI: 'https://Raunaq2001.github.io/file-storage?callback',
         REPO_OWNER: 'Raunaq2001',
         REPO_NAME: 'file-storage-private',
@@ -157,22 +164,29 @@ async function initiateOAuth() {
         return;
     }
 
+    const codeVerifier = generateRandomString(64);
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateRandomString(32);
+
+    // Save for later
+    setConfig(CONFIG.STORAGE_KEYS.PKCE_VERIFIER, codeVerifier);
     setConfig(CONFIG.STORAGE_KEYS.STATE, state);
 
-    // Use implicit flow - token returned in URL fragment (no CORS)
+    // Use Authorization Code Flow with PKCE
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         scope: CONFIG.AUTH_SCOPES,
         state: state,
-        response_type: 'token' // Implicit flow returns token directly
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        response_type: 'code' // Request authorization code
     });
 
     sessionStorage.setItem('oauth_pending', 'true');
 
     const finalUrl = `${CONFIG.OAUTH_URL}?${params.toString()}`;
-    console.log('Redirecting to (implicit flow):', finalUrl);
+    console.log('Redirecting to (PKCE auth code flow):', finalUrl);
 
     window.location.href = finalUrl;
 }
@@ -205,16 +219,17 @@ async function exchangeCodeForToken(code, state, verifier) {
 }
 
 async function handleOAuthCallback() {
-    console.log('=== OAuth Callback Handler (Implicit Flow) ===');
+    console.log('=== OAuth Callback Handler (PKCE with Serverless) ===');
     console.log('Current URL:', window.location.href);
 
-    // In implicit flow, token is in URL hash fragment, not query params
-    // URL format: https://callback?callback#access_token=...&token_type=...&scope=...
-
-    // Check for errors first (GitHub uses query params for errors)
     const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
+
+    // Clean up URL
+    window.history.replaceState({}, document.title, window.location.pathname);
 
     if (error) {
         console.error('OAuth error:', error, errorDescription);
@@ -222,55 +237,63 @@ async function handleOAuthCallback() {
         return false;
     }
 
-    // Extract token from hash fragment
-    const hash = window.location.hash;
-    console.log('URL hash fragment:', hash);
-
-    if (!hash || !hash.includes('access_token')) {
-        console.warn('No access token in URL fragment');
-        showStatus('No access token received. Please try again.', 'error');
+    if (!code) {
+        console.warn('No code in URL - might be direct access');
         return false;
     }
 
-    // Parse hash parameters
-    const hashParams = new URLSearchParams(hash.substring(1)); // Remove '#'
-    const accessToken = hashParams.get('access_token');
-    const tokenType = hashParams.get('token_type');
-    const scope = hashParams.get('scope');
-
-    console.log('Token received:', { accessToken: accessToken ? '***' + accessToken.slice(-4) : 'none', tokenType, scope });
-
-    if (!accessToken) {
-        showStatus('No access token received. Please try again.', 'error');
-        return false;
-    }
-
-    // Validate state
-    const state = urlParams.get('state');
     const storedState = localStorage.getItem(CONFIG.STORAGE_KEYS.STATE);
+    const verifier = localStorage.getItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
+    const redirectUri = getConfig(CONFIG.STORAGE_KEYS.REDIRECT_URI);
 
-    console.log('State validation:', { received: state, stored: storedState, match: state === storedState });
+    console.log('Validation:', { receivedState: state, storedState, verifierPresent: !!verifier, redirectUri });
 
-    if (state !== storedState) {
-        console.error('State mismatch');
+    if (state !== storedState || !verifier) {
+        console.error('State mismatch or missing verifier');
         showStatus('Invalid OAuth state. Please try again.', 'error');
         return false;
     }
 
-    // Save token
-    localStorage.setItem(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, accessToken);
+    try {
+        showStatus('Exchanging code for token...', 'info');
 
-    // Clear state
-    localStorage.removeItem(CONFIG.STORAGE_KEYS.STATE);
+        // Call our serverless function to exchange code for token
+        const apiUrl = CONFIG.API_BASE_URL ? `${CONFIG.API_BASE_URL}/api/oauth-callback` : '/api/oauth-callback';
+        console.log('Calling API endpoint:', apiUrl);
 
-    console.log('Token saved, loading user info...');
-    showStatus('Authentication successful!', 'success');
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code: code,
+                code_verifier: verifier,
+                redirect_uri: redirectUri
+            })
+        });
 
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        const data = await response.json();
 
-    await loadUserInfo();
-    return true;
+        if (!response.ok) {
+            throw new Error(data.error || 'Token exchange failed');
+        }
+
+        console.log('Token exchange successful:', { tokenType: data.token_type, scope: data.scope });
+        localStorage.setItem(CONFIG.STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+
+        // Clear sensitive data
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.PKCE_VERIFIER);
+        localStorage.removeItem(CONFIG.STORAGE_KEYS.STATE);
+
+        showStatus('Authentication successful!', 'success');
+        await loadUserInfo();
+        return true;
+    } catch (err) {
+        console.error('Token exchange failed:', err);
+        showStatus(`Authentication error: ${err.message}`, 'error');
+        return false;
+    }
 }
 
 function logout() {
