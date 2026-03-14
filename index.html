@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Upload and download files using GitHub repository storage">
+    <meta name="theme-color" content="#6e5494">
+    <title>GitHub File Storage</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">
+                <i class="fab fa-github"></i>
+                GitHub File Storage
+            </h1>
+            <div class="auth-section">
+                <button id="loginBtn" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Login with GitHub
+                </button>
+                <div id="userInfo" class="user-info hidden">
+                    <span id="userAvatar" class="avatar"></span>
+                    <span id="userName"></span>
+                    <button id="logoutBtn" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section id="uploadSection" class="section">
+                <h2><i class="fas fa-upload"></i> Upload Files</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="upload-text">Drag & drop files here</p>
+                        <p class="upload-text-small">or</p>
+                        <button id="browseBtn" class="btn btn-secondary">
+                            <i class="fas fa-folder-open"></i> Browse Files
+                        </button>
+                        <input type="file" id="fileInput" multiple style="display: none;">
+                    </div>
+                </div>
+                <div id="fileList" class="file-list hidden">
+                    <div class="file-item">
+                        <input type="checkbox" id="selectAll" class="select-checkbox">
+                        <label for="selectAll" class="select-label">Select All</label>
+                        <span class="file-name">File Name</span>
+                        <span class="file-size">Size</span>
+                        <span class="file-actions">Actions</span>
+                    </div>
+                    <div id="uploadedFiles"></div>
+                </div>
+            </section>
+
+            <section id="downloadSection" class="section">
+                <h2><i class="fas fa-download"></i> Download Files</h2>
+                <div class="download-controls">
+                    <input type="text" id="searchInput" placeholder="Search files..." class="search-input">
+                    <button id="refreshBtn" class="btn btn-secondary">
+                        <i class="fas fa-sync"></i> Refresh
+                    </button>
+                </div>
+                <div id="fileBrowser" class="file-browser">
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading files...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="statusSection" class="section">
+                <h2><i class="fas fa-info-circle"></i> Status</h2>
+                <div id="statusMessages" class="status-messages"></div>
+                <div id="progressBar" class="progress-bar hidden">
+                    <div class="progress-fill"></div>
+                    <span class="progress-text">0%</span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
