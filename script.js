@@ -98,7 +98,18 @@ function debounce(func, wait) {
 // ===== Storage Functions =====
 function getConfig(key, defaultValue = null) {
     const stored = localStorage.getItem(CONFIG.STORAGE_KEYS[key]);
-    return stored ? JSON.parse(stored) : defaultValue;
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            return stored; // Return raw string if not JSON
+        }
+    }
+    // Fallback to CONFIG.STORAGE_KEYS values if available
+    if (CONFIG.STORAGE_KEYS[key] && defaultValue === null) {
+        return CONFIG.STORAGE_KEYS[key];
+    }
+    return defaultValue;
 }
 
 function setConfig(key, value) {
